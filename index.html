@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>마구마구 떨어지는 운석 피하기</title>
+    <title>UFO 운석 피하기</title>
     <style>
         body {
             margin: 0;
@@ -81,8 +81,8 @@
         <div id="instructions">
             <div>🛸 UFO 혜설 피하기 🛸</div>
             <br>
-            <div>PC: 좌우 화살표키로 이동</div>
-            <div>모바일: 화면 좌우 터치로 이동</div>
+            <div>PC: 좌우 화살표키로 이동, 스페이스바로 미사일 발사</div>
+            <div>모바일: 화면 좌우 터치로 이동, 화면 터치로 미사일 발사</div>
             <br>
             <div class="blink">스페이스바를 눌러 시작하세요!</div>
         </div>
@@ -139,6 +139,12 @@
         const asteroidSpeed = 3;
         const asteroidSpawnRate = 0.02;
 
+        // 미사일
+        const missiles = [];
+        const missileSpeed = 8;
+        let canShoot = true;
+        const shootCooldown = 200; // 밀리초
+
         // UFO 그리기
         function drawUFO() {
             const pixelSize = 6;
@@ -158,7 +164,41 @@
             }
         }
 
-        // 운석 생성
+        // 미사일 생성
+        function createMissile() {
+            return {
+                x: ufo.x + ufo.width / 2 - 3, // UFO 중앙에서 발사
+                y: ufo.y,
+                width: 6,
+                height: 12,
+                speed: missileSpeed
+            };
+        }
+
+        // 미사일 그리기 (도트 스타일)
+        function drawMissile(missile) {
+            const pixelSize = 3;
+            const pattern = [
+                [0,1,0],
+                [1,1,1],
+                [1,1,1],
+                [0,1,0]
+            ];
+
+            for (let row = 0; row < pattern.length; row++) {
+                for (let col = 0; col < pattern[row].length; col++) {
+                    if (pattern[row][col] === 1) {
+                        ctx.fillStyle = '#00ff00'; // 녹색 미사일
+                        ctx.fillRect(
+                            missile.x + col * pixelSize,
+                            missile.y + row * pixelSize,
+                            pixelSize,
+                            pixelSize
+                        );
+                    }
+                }
+            }
+        }
         function createAsteroid() {
             return {
                 x: Math.random() * (canvas.width - 30),
@@ -245,6 +285,27 @@
                 }
             }
 
+            // 미사일 업데이트
+            for (let i = missiles.length - 1; i >= 0; i--) {
+                missiles[i].y -= missiles[i].speed;
+
+                // 화면 밖으로 나간 미사일 제거
+                if (missiles[i].y < -missiles[i].height) {
+                    missiles.splice(i, 1);
+                    continue;
+                }
+
+                // 미사일과 운석 충돌 검사
+                for (let j = asteroids.length - 1; j >= 0; j--) {
+                    if (checkCollision(missiles[i], asteroids[j])) {
+                        // 미사일과 운석 모두 제거
+                        missiles.splice(i, 1);
+                        asteroids.splice(j, 1);
+                        break;
+                    }
+                }
+            }
+
             lastTime = currentTime;
         }
 
@@ -264,6 +325,9 @@
 
             // 운석 그리기
             asteroids.forEach(drawAsteroid);
+
+            // 미사일 그리기
+            missiles.forEach(drawMissile);
         }
 
         // 게임 시작
@@ -272,6 +336,7 @@
             gameTime = 0;
             lastTime = performance.now();
             asteroids.length = 0;
+            missiles.length = 0; // 미사일도 초기화
             ufo.x = canvas.width / 2 - 39;
             instructions.style.display = 'none';
             gameOver.style.display = 'none';
@@ -300,6 +365,13 @@
                 e.preventDefault();
                 if (gameState === 'waiting' || gameState === 'gameOver') {
                     startGame();
+                } else if (gameState === 'playing' && canShoot) {
+                    // 미사일 발사
+                    missiles.push(createMissile());
+                    canShoot = false;
+                    setTimeout(() => {
+                        canShoot = true;
+                    }, shootCooldown);
                 }
             }
         });
@@ -328,6 +400,13 @@
             
             if (gameState === 'waiting' || gameState === 'gameOver') {
                 startGame();
+            } else if (gameState === 'playing' && canShoot) {
+                // 미사일 발사
+                missiles.push(createMissile());
+                canShoot = false;
+                setTimeout(() => {
+                    canShoot = true;
+                }, shootCooldown);
             }
         });
 
